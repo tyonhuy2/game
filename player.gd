@@ -135,9 +135,16 @@ func _attack(dir: Vector2) -> void:
 
 	var half_arc := cos(deg_to_rad(sword_arc_degrees / 2.0))
 	for e in get_tree().get_nodes_in_group("enemies"):
-		var to_e: Vector2 = e.global_position - global_position
+		var center: Vector2 = e.global_position
+		if e.has_method("get_hit_center"):
+			center = e.get_hit_center()   # big targets like the castle
+		var reach := 0.0
+		var extra = e.get("hit_radius")
+		if extra != null:
+			reach = extra
+		var to_e: Vector2 = center - global_position
 		var d := to_e.length()
-		if d <= sword_range and (d < 8.0 or dir.dot(to_e / d) >= half_arc):
+		if d - reach <= sword_range and (d - reach < 8.0 or dir.dot(to_e / d) >= half_arc):
 			e.take_damage(sword_damage, global_position)
 
 

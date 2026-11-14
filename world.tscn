@@ -5,7 +5,8 @@
 [ext_resource type="Texture2D" uid="uid://bmooqfp2veoic" path="res://sprit/Screenshot_2026-11-14_at_2.14.10_PM-removebg-preview.png" id="2_tlwt5"]
 [ext_resource type="Texture2D" uid="uid://b2tu5s06k3fac" path="res://sprit/Screenshot_20261114_142859-removebg-preview.png" id="3_aqk2v"]
 [ext_resource type="Texture2D" uid="uid://dcmcixu6xf5xt" path="res://sprit/goo-removebg-preview.png" id="4_dwbse"]
-[ext_resource type="Texture2D" uid="uid://cctjdxawaks2c" path="res://sprit/images-removebg-preview.png" id="5_036b0"]
+[ext_resource type="Texture2D" uid="uid://cfvakaa7pkg43" path="res://sprit/Screenshot_20261114_151808-removebg-preview.png" id="5_gbfbk"]
+[ext_resource type="Texture2D" uid="uid://jlpmje504c1l" path="res://sprit/Screenshot_20261114_151320-removebg-preview.png" id="6_pkg7o"]
 [ext_resource type="Texture2D" uid="uid://rf1i4w634rg7" path="res://sprit/Screenshot_20261114_150203-removebg-preview.png" id="7_pkg7o"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_bfbta"]
@@ -17,6 +18,7 @@ tree_textures = Array[Texture2D]([ExtResource("2_tlwt5")])
 rock_textures = Array[Texture2D]([ExtResource("3_aqk2v")])
 tree_density = 0.016
 enemy_texture = ExtResource("4_dwbse")
+castle_texture = ExtResource("5_gbfbk")
 
 [node name="Terrain" type="Node2D" parent="." unique_id=163886384]
 z_index = -10
@@ -27,7 +29,7 @@ y_sort_enabled = true
 [node name="player" type="CharacterBody2D" parent="Objects" unique_id=1935783806 node_paths=PackedStringArray("world")]
 script = ExtResource("2_fj7yv")
 world = NodePath("../..")
-sword_texture = ExtResource("5_036b0")
+sword_texture = ExtResource("6_pkg7o")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Objects/player" unique_id=1885886185]
 shape = SubResource("RectangleShape2D_bfbta")

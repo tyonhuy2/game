@@ -26,9 +26,15 @@ extends Node2D
 @export var enemy_health := 3
 @export var enemy_speed := 45.0
 
+@export_group("Castle")
+@export var castle_texture: Texture2D   # optional, a gray placeholder castle is drawn if empty
+@export var castle_health := 100
+@export var castle_distance_tiles := 120   # how far from your start the castle is
+
 enum Tile { DEEP, SHALLOW, SAND, GRASS }
 
 const ENEMY_SCRIPT := preload("res://enemy.gd")
+const CASTLE_SCRIPT := preload("res://castle.gd")
 
 const COLORS := {
 	Tile.DEEP: Color("1f4e8c"),
@@ -48,6 +54,10 @@ var chunks := {}                       # Vector2i -> { "terrain": Sprite2D, "obj
 var _queue: Array[Vector2i] = []
 var _last_chunk := Vector2i(999999, 999999)
 var _spawn_pos := Vector2.ZERO
+var _castle_pos := Vector2.ZERO
+var _castle_chunk := Vector2i.ZERO
+var _castle_hp := 0
+var _castle_label: Label
 
 
 func _ready() -> void:
@@ -74,6 +84,11 @@ func _ready() -> void:
 	if player:
 		player.global_position = _spawn_pos
 
+	_castle_hp = castle_health
+	_castle_pos = _find_castle_site()
+	_castle_chunk = _chunk_of(_castle_pos)
+	_build_castle_hud()
+
 
 func _process(_delta: float) -> void:
 	if player == null:
@@ -83,6 +98,7 @@ func _process(_delta: float) -> void:
 		_last_chunk = pc
 		_refresh(pc)
 	_build_next()  # one chunk per frame keeps movement smooth
+	_update_castle_hud()
 
 
 # ---------- public helpers (use these from your player / enemies) ----------
@@ -189,6 +205,8 @@ func _build_chunk(c: Vector2i) -> void:
 
 			# objects
 			var pos := Vector2(t * tile_size) + Vector2(rng.randf() * tile_size, rng.randf() * tile_size)
+			if pos.distance_to(_castle_pos) < 90.0:
+				continue   # keep the ground around the castle clear
 			if kind == Tile.GRASS and player != null and enemy_density > 0.0 \
 					and pos.distance_to(_spawn_pos) > 200.0 and rng.randf() < enemy_density:
 				objects.append(_spawn_enemy(pos))
@@ -201,6 +219,9 @@ func _build_chunk(c: Vector2i) -> void:
 			if (kind == Tile.GRASS or kind == Tile.SAND) and not rock_textures.is_empty():
 				if rng.randf() < rock_density:
 					objects.append(_spawn_object(rock_textures, pos, rng))
+
+	if c == _castle_chunk and _castle_hp > 0:
+		objects.append(_spawn_castle())
 
 	# terrain: one sprite per chunk, 1 pixel = 1 tile, scaled up
 	var terrain := Sprite2D.new()
@@ -236,3 +257,111 @@ func _spawn_enemy(pos: Vector2) -> Node2D:
 	e.position = pos.round()
 	objects_root.add_child(e)
 	return e
+
+
+# ---------- castle ----------
+
+func _find_castle_site() -> Vector2:
+	# Same seed = same castle spot. Picks a direction, then searches for a flat patch of grass.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = world_seed + 99
+	var target := _spawn_pos + Vector2.from_angle(rng.randf() * TAU) * castle_distance_tiles * tile_size
+	for r in range(0, 150, 3):
+		for i in 16:
+			var a := TAU * i / 16.0
+			var p := target + Vector2(cos(a), sin(a)) * r * tile_size
+			if _all_grass_around(_tile_of(p), 4):
+				return p.snapped(Vector2(tile_size, tile_size))
+	return _spawn_pos + Vector2(castle_distance_tiles * tile_size, 0)
+
+
+func _all_grass_around(center: Vector2i, radius: int) -> bool:
+	for dy in range(-radius, radius + 1):
+		for dx in range(-radius, radius + 1):
+			if _tile_kind(center + Vector2i(dx, dy)) != Tile.GRASS:
+				return false
+	return true
+
+
+func _spawn_castle() -> Node2D:
+	var c = CASTLE_SCRIPT.new()
+	c.world = self
+	c.texture = castle_texture
+	c.max_health = castle_health
+	c.health = _castle_hp
+	c.position = _castle_pos
+	objects_root.add_child(c)
+	return c
+
+
+func damage_castle(amount: int) -> int:
+	_castle_hp -= amount
+	if _castle_hp <= 0:
+		_castle_hp = 0
+		_show_win()
+	return _castle_hp
+
+
+func _build_castle_hud() -> void:
+	var layer := CanvasLayer.new()
+	add_child(layer)
+	_castle_label = Label.new()
+	_castle_label.position = Vector2(8, 32)
+	layer.add_child(_castle_label)
+
+
+func _update_castle_hud() -> void:
+	if _castle_label == null or player == null:
+		return
+	var dist := player.global_position.distance_to(_castle_pos)
+	_castle_label.text = "Castle HP: %d / %d   |   %s, %d tiles away" % [
+		_castle_hp, castle_health, _compass(player.global_position, _castle_pos), roundi(dist / tile_size)]
+
+
+func _compass(from: Vector2, to: Vector2) -> String:
+	var names := ["E", "SE", "S", "SW", "W", "NW", "N", "NE"]
+	var angle := rad_to_deg((to - from).angle())   # 0 = east, 90 = south
+	return names[posmod(roundi(angle / 45.0), 8)]
+
+
+func _show_win() -> void:
+	get_tree().paused = true
+
+	var layer := CanvasLayer.new()
+	layer.layer = 100
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS   # keeps the button working while paused
+	add_child(layer)
+
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.65)
+	layer.add_child(dim)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	var center := CenterContainer.new()
+	layer.add_child(center)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 16)
+	center.add_child(box)
+
+	var title := Label.new()
+	title.text = "YOU WIN!"
+	title.add_theme_font_size_override("font_size", 64)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+
+	var sub := Label.new()
+	sub.text = "The castle has fallen."
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(sub)
+
+	var btn := Button.new()
+	btn.text = "Play again"
+	btn.pressed.connect(_restart)
+	box.add_child(btn)
+
+
+func _restart() -> void:
+	get_tree().paused = false
+	get_tree().reload_current_scene()
