@@ -3,6 +3,8 @@
 [ext_resource type="Script" uid="uid://d0nhl0c06ortq" path="res://world.gd" id="1_f3sb7"]
 [ext_resource type="Script" uid="uid://80kl10p8d3vr" path="res://player.gd" id="2_fj7yv"]
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_bfbta"]
+
 [node name="world" type="Node2D" unique_id=1654396254]
 script = ExtResource("1_f3sb7")
 
@@ -11,5 +13,6 @@ visible = false
 script = ExtResource("2_fj7yv")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="player" unique_id=1885886185]
+shape = SubResource("RectangleShape2D_bfbta")
 
 [node name="Sprite2D" type="Sprite2D" parent="player" unique_id=863833483]
